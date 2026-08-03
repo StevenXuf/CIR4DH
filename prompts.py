@@ -1,113 +1,100 @@
 from utils import convert_pil_to_base64
 
-###################################
-#Prompts for CIRCO dataset
-###################################
-def generate_composed_description_qwen(reference_image, caption):
-    target_description = [
-        {
-            "role": "system", 
-            "content":
-            """
-                    You are an expert at visual imagination of real-world scenes. 
-                    Given a reference image and modification instructions, mentally apply the modifications and produce an accurate, detailed description of the resulting scene. 
-                    Apply the modifications exactly as described, and describe the final scene after the changes.
-                    The modifications may involve:
-                        1. Cardinality: adjusting the number of objects (e.g., “has two boxes”).
-                        2. Addition: introducing new objects or attributes (e.g., “a child under the umbrella”).
-                        3. Negation: removing elements (e.g., “shows no bike”).
-                        4. Direct Addressing: ensuring a specific object is present (e.g., “next to a window”).
-                        5. Compare & Change: altering attributes (e.g., “different color,” “surrounded by flowers”).
-                        6. Comparative Statements: relative size, number, or intensity (e.g., “more stickers,” “larger crowd”).
-                        7. Conjunction Statements: multiple edits at once (e.g., “surrounded by snow and trees are more bare”).
-                        8. Spatial Relations & Background: positioning or environment changes (e.g., “skyscrapers in the background”).
-                        9. Viewpoint: changes in perspective or framing (e.g., “shot from above”).
-                    Write 1 to 3 coherent sentences in clear English.
+def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=None):
+    meta_info = f"""
+                Additionally, the given reference image contains hierarchical information for objects: "{obj}" and for material: "{material}" in Cantalan language.
+                You shold first translate the Catalan information into English in your mind, and then take into account the translated material and object information of the reference image when generating the final description of target images.
                 """
-        },
-        {
-            "role": "user",
-            "content": [
-                {"type": "image", "image": "data:image;base64," + convert_pil_to_base64(reference_image)},
-                {
-                    "type": "text", 
-                    "text": 
-                    f"""
-                        Here are the modification instructions: {caption}.\n\n
-                        Focus on the objects, people, animals, attributes (color, size, shape, quantity), spatial relations, and background context. 
-                        Be specific and objective. 
-                        Avoid imaginary details not supported by the reference image or the modification. 
-                        Do not use vague comparative terms like 'same/different/smaller/larger/shorter/longer/unchanged', etc. Instead, you should specify these differences clearly, like: another color instead of red (if no specific targeting color is mentioned), and a clear sky (if mentioned) instead of unchanged sky, etc.
-                        Write 1 to 3 complete and coherent sentences so that I can find targeting images based on your description solely without knowing the reference image or modification instructions.
-                        Now, describe how the final image looks after applying these modifications.
-                    """
-                }
-            ],
-        }
-    ]
-    return target_description
 
-def generate_composed_description_llava(caption):
-    target_description = [
-        {
-            "role": "assistant", 
-            "content":[{"type": "text", 
-            "text":
+    template = """
+                You are an expert in visual reasoning for composed image retrieval.
+
+                Given a reference image and a modification instruction, imagine the scene that would result after applying the instruction to the reference image.
+
+                Follow the steps below:
+
+                1. Identify the visually important objects, and their attributes in the reference image.
+                2. Apply the requested modification exactly to the targeting object. Replace any original detail that conflicts with the modification.
+                3. Preserve all relevant details from the reference image that are not changed by the instruction.
+                4. Make the modified content explicit, especially changes involving objects, or materials.
+                5. Do not mention the reference image, the modification instruction, or the editing process.
+                6. Do not describe both the original and modified states.
+                7. Do not add details that are not visible or reasonably implied.
+                8. Output two to three simple, concise, coherent, and visually descriptive English sentences for the resulting images. 
+
+                For example, if the reference image shows: "a ceramic on a wooden table in a kitchen" and the instruction is "change ceramic to brick", then retuen only: "a brick on a wooden table. The table is in a kitchen full of furniture".
             """
-                    You are an expert at visual imagination of real-world scenes. 
-                    Given a reference image and modification instructions, mentally apply the modifications and produce an accurate, detailed description of the resulting scene. 
-                    Apply the modifications exactly as described, and describe the final scene after the changes.
-                    The modifications may involve:
-                        1. Cardinality: adjusting the number of objects (e.g., “has two boxes”).
-                        2. Addition: introducing new objects or attributes (e.g., “a child under the umbrella”).
-                        3. Negation: removing elements (e.g., “shows no bike”).
-                        4. Direct Addressing: ensuring a specific object is present (e.g., “next to a window”).
-                        5. Compare & Change: altering attributes (e.g., “different color,” “surrounded by flowers”).
-                        6. Comparative Statements: relative size, number, or intensity (e.g., “more stickers,” “larger crowd”).
-                        7. Conjunction Statements: multiple edits at once (e.g., “surrounded by snow and trees are more bare”).
-                        8. Spatial Relations & Background: positioning or environment changes (e.g., “skyscrapers in the background”).
-                        9. Viewpoint: changes in perspective or framing (e.g., “shot from above”).
-                    Write 1 to 3 coherent and short sentences in clear English.
-                """}]
-        },
-        {
-            "role": "user",
-            "content": [
-                {"type": "image"},
-                {
-                    "type": "text", 
-                    "text": 
-                    f"""
-                        Here are the modification instructions: {caption}.\n\n
-                        Focus on the objects, people, animals, attributes (color, size, shape, quantity), spatial relations, and background context. 
-                        Be specific and objective. 
-                        Avoid imaginary details not supported by the reference image or the modification. 
-                        Do not use vague comparative terms like 'same/different/smaller/larger/shorter/longer/unchanged', etc. Instead, you should specify these differences clearly, like: another color instead of red (if no specific targeting color is mentioned), and a clear sky (if mentioned) instead of unchanged sky, etc.
-                        Write 1 to 3 short and coherent sentences so that I can find targeting images based on your description solely without knowing the reference image or modification instructions.
-                        Now, describe how the final image looks after applying these modifications.
-                    """
-                }
-            ],
-        }
-    ]
-    return target_description
-
-####################################
-# Prompts redirection
-####################################
-def get_composed_prompts(dataset_name, reference_image, caption):
-    if dataset_name.lower() == "circo":
-        composed_description = generate_composed_description_qwen(reference_image, caption)
+    if gen_model == 'qwen':
+        sys_prompt = [
+            {
+                "role": "system", 
+                "content": f"{template}"
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image", 
+                        "image": "data:image;base64," + convert_pil_to_base64(pil_image)},
+                    {   
+                        "type": "text",
+                        "text": f"""
+                                Modification: {modifier}
+                                {meta_info}
+                                Now give the final caption in two to three short sentences.
+                            """ if material or obj else f"""
+                                Modification: {modifier}
+                                Now give the final caption in two to three short sentences.
+                            """
+                    }
+                ],
+            }
+        ]
+    elif gen_model == 'llava':
+        sys_prompt = [
+            {
+                "role": "system", 
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"{template}"
+                    }
+                ]
+            },
+            {
+                "role": "user",
+                "content": [
+                    {   
+                        "type": "text",
+                        "text": f"""
+                                Modification: {modifier}
+                                {meta_info}
+                                Now give the final caption in two to three short sentences.
+                            """ if material or obj else f"""
+                                Modification: {modifier}
+                                Now give the final caption in two to three short sentences.
+                            """
+                    },
+                    {"type": "image"}
+                ],
+            }
+        ]
+    elif gen_model == 'deepseek':
+        sys_prompt = [
+            {
+                "role": "User",
+                "content": f"""{template}
+                                Modification: {modifier}
+                                {meta_info}
+                                Now give the final caption in two to three short sentences.
+                            """ if material or obj else f"""{template}
+                                Modification: {modifier}
+                                Now give the final caption in two to three short sentences.""",
+                "images": [],
+            },
+            {"role": "Assistant", "content": ""},
+        ]
     else:
-        raise ValueError(f"Unsupported dataset: {dataset_name}")
-    return composed_description
+        raise ValueError(f"Unsupported gen_model: {gen_model}")
 
-
-def get_composed_prompts_other_mllm(mllm, caption):
-    if mllm.lower() == "llava":
-        composed_description = generate_composed_description_llava(caption)
-    elif mllm.lower() == "qwen":
-        composed_description = generate_composed_description_qwen(caption)
-    else:
-        raise ValueError(f"Unsupported mllm: {mllm}")
-    return composed_description
+    return sys_prompt
