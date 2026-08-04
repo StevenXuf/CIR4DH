@@ -1,13 +1,17 @@
 from utils import convert_pil_to_base64
 
 def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=None):
+    """
+    You should first translate the Catalan information into English in your mind, and then take into account the translated information when generating the final description of target images.
+    """
     meta_info = f"""
-                Additionally, the given reference image contains hierarchical information for objects: "{obj}" and for material: "{material}" in Cantalan language.
-                You shold first translate the Catalan information into English in your mind, and then take into account the translated material and object information of the reference image when generating the final description of target images.
+                Additionally, extra information of objects and materials is provided in Catalan language.
+                The given object: "{obj}" (in Catalan) is made of material: "{material}" (in Catalan).
+                Take into account the information when generating the final description of target images.
                 """
 
     template = """
-                You are an expert in visual reasoning for composed image retrieval.
+                You are an expert in visual understanding and reasoning for composed image retrieval.
 
                 Given a reference image and a modification instruction, imagine the scene that would result after applying the instruction to the reference image.
 
@@ -16,11 +20,11 @@ def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=Non
                 1. Identify the visually important objects, and their attributes in the reference image.
                 2. Apply the requested modification exactly to the targeting object. Replace any original detail that conflicts with the modification.
                 3. Preserve all relevant details from the reference image that are not changed by the instruction.
-                4. Make the modified content explicit, especially changes involving objects, or materials.
+                4. Make the modified content explicit, especially changes involving objects and materials.
                 5. Do not mention the reference image, the modification instruction, or the editing process.
                 6. Do not describe both the original and modified states.
                 7. Do not add details that are not visible or reasonably implied.
-                8. Output two to three simple, concise, coherent, and visually descriptive English sentences for the resulting images. 
+                8. Output two to three simple, concise, coherent, and visually descriptive English sentences for the resulting scene. 
 
                 For example, if the reference image shows: "a ceramic on a wooden table in a kitchen" and the instruction is "change ceramic to brick", then retuen only: "a brick on a wooden table. The table is in a kitchen full of furniture".
             """
@@ -42,7 +46,7 @@ def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=Non
                                 Modification: {modifier}
                                 {meta_info}
                                 Now give the final caption in two to three short sentences.
-                            """ if material or obj else f"""
+                            """ if material is not None or obj is not None else f"""
                                 Modification: {modifier}
                                 Now give the final caption in two to three short sentences.
                             """
@@ -70,7 +74,7 @@ def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=Non
                                 Modification: {modifier}
                                 {meta_info}
                                 Now give the final caption in two to three short sentences.
-                            """ if material or obj else f"""
+                            """ if material is not None or obj is not None else f"""
                                 Modification: {modifier}
                                 Now give the final caption in two to three short sentences.
                             """
@@ -87,7 +91,7 @@ def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=Non
                                 Modification: {modifier}
                                 {meta_info}
                                 Now give the final caption in two to three short sentences.
-                            """ if material or obj else f"""{template}
+                            """ if material is not None or obj is not None else f"""{template}
                                 Modification: {modifier}
                                 Now give the final caption in two to three short sentences.""",
                 "images": [],
