@@ -133,7 +133,7 @@ class FeatureExtractor():
         else:
             self.logger.warning("Metadata not provided or not used. Proceeding without metadata.")
 
-        if self.cfg.baseline.lower() not in ['text_only', 'image_only', 'combined']:
+        if self.cfg.baseline.lower() == 'gen':
             text_gen_model, text_gen_processor, gen_config = load_text_gen_model(self.cfg, self.logger)
 
         query_embed=[]
@@ -151,9 +151,11 @@ class FeatureExtractor():
                 query_features = self.get_image_features(pil_images)
             elif self.cfg.baseline == 'combined':
                 query_features = F.normalize(self.get_text_features(modifiers) + self.get_image_features(pil_images), p=2, dim=-1)
-            else:
+            elif self.cfg.baseline == 'gen':
                 captions = generate_text(self.cfg, self.logger, pil_images, modifiers, text_gen_model, text_gen_processor, gen_config, materials=materials, objects=objects)
                 query_features = self.get_text_features(captions)
+            else:
+                raise Exception('Choose from "text_only", "image_only", "combined", or "gen".')
             query_embed.append(query_features)
         query_embed = torch.cat(query_embed)
 

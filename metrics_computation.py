@@ -34,7 +34,7 @@ def main(**kwargs):
     cfg = get_config(**kwargs)
     set_seed(cfg.seed)
 
-    cfg.paths.log_path = Path(cfg.paths.log_path) / f"{cfg.split}_{cfg.gen_model}_{cfg.extractor_name}_{'with_metadata' if cfg.use_metadata else 'without_metadata'}_{ 'first_hierarchy' if cfg.use_first_hierarchy else 'all_hierarchy' }_{cfg.seed}.log"
+    cfg.paths.log_path = Path(cfg.paths.log_path) / f"{cfg.split}_{cfg.gen_model}_{cfg.extractor_name}_{'with_metadata' if cfg.use_metadata else 'without_metadata'}_{ 'first_hierarchy' if cfg.use_first_hierarchy else 'all_hierarchy' }_{cfg.baseline}_{cfg.seed}.log"
     setup_logging(cfg.paths.log_path)
     logger = logging.getLogger(__name__)
     logger.info(f'Config: {cfg}')

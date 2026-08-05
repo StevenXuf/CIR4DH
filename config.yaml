@@ -1,4 +1,4 @@
-extractor_name: "openclip"
+extractor_name: openclip
 batch_size: 64
 num_workers: 4
 gpu_id: 0
@@ -9,7 +9,7 @@ top_ks: [1, 5, 10, 50]
 use_metadata: false # bool, use capitalized ones in terminal
 use_first_hierarchy: false # bool, use first hierarchy for metadata
 gen_model: "qwen" # str, model to use for text generation, choices: [qwen, llava, deepseek]
-baseline: none
+baseline: gen
 
 dataset_name: "glam"
 paths:

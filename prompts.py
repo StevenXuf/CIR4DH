@@ -25,8 +25,9 @@ def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=Non
                 6. Do not describe both the original and modified states.
                 7. Do not add details that are not visible or reasonably implied.
                 8. Output two to three simple, concise, coherent, and visually descriptive English sentences for the resulting scene. 
+                9. Append the object and material at the end of the description in json format using {"object": "material"}, e.g., {"chair": "wood"}.
 
-                For example, if the reference image shows: "a ceramic on a wooden table in a kitchen" and the instruction is "change ceramic to brick", then retuen only: "a brick on a wooden table. The table is in a kitchen full of furniture".
+                For example, if the reference image shows: "a ceramic on a wooden table in a kitchen" and the instruction is "change ceramic to brick", then retuen only: "a brick on a wooden table. The table is in a kitchen full of furniture. {"table": "wooden", "brick": "concrete"}".
             """
     if gen_model == 'qwen':
         sys_prompt = [
