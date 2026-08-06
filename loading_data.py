@@ -55,7 +55,17 @@ def process_df(cfg, logger):
             lambda value: [item.strip() for item in value.split(",") if item.strip() not in set(non_existing_images)]
         )
     df.fillna("", inplace=True)
-    logger.info(f"Final partition counts: {df['partition'].value_counts().to_dict()}")
+    logger.info(f"Partition counts: {df['partition'].value_counts().to_dict()}")
+
+    if cfg.remove_duplicates:
+        keys = pd.DataFrame({
+                "id1": df["id1"].map(lambda x: tuple(sorted(x))),
+                "id2": df["id2"].map(lambda x: tuple(sorted(x))),
+                # "query": df["query"],
+            })
+
+        df = df.loc[~keys.duplicated(keep="first")].reset_index(drop=True)
+        logger.info(f"Partition counts after removing duplicates: {df['partition'].value_counts().to_dict()}")
 
     return df[df['partition'] == cfg.split].reset_index(drop=True)
 
@@ -71,13 +81,22 @@ class CustomDataset(Dataset):
         return len(self.modifiers)
 
     def __getitem__(self, idx):
-        ref_img = Image.open(self.ref_paths[idx][0]).convert('RGB').resize((224,224), Image.Resampling.BICUBIC)
-        target_img = [Image.open(tar_path).convert('RGB').resize((224,224), Image.Resampling.BICUBIC) for tar_path in self.target_paths[idx]]
-        tar_names = [Path(tar_path).stem for tar_path in self.target_paths[idx]]
+        ref_path = self.ref_paths[idx][0]
+        tar_paths = self.target_paths[idx]
+        ref_img = Image.open(ref_path).convert('RGB').resize((224,224), Image.Resampling.BICUBIC)
+        target_img = [Image.open(tar_path).convert('RGB').resize((224,224), Image.Resampling.BICUBIC) for tar_path in tar_paths]
+        tar_names = [Path(tar_path).stem for tar_path in tar_paths]
         cap = self.modifiers[idx].strip().replace('for', 'to')
         mat = self.materials[idx].strip() if self.materials is not None else None
         obj = self.objects[idx].strip() if self.objects is not None else None
-        sample = {'pil_image': ref_img, 'target_pil': target_img, 'modifier': cap, 'target_names': tar_names, 'material': mat, 'object': obj}
+        sample = {'pil_image': ref_img, 
+                  'ref_path': ref_path,
+                  'target_pil': target_img, 
+                  'target_paths': tar_paths,
+                  'modifier': cap, 
+                  'target_names': tar_names, 
+                  'material': mat, 
+                  'object': obj}
         
         return sample
 
@@ -102,8 +121,8 @@ class GLAMQueryDataset():
         ref_paths = self.df["id1"].apply(
                                         lambda ids: search_image_path(ids, self.cfg.image_gallery, self.cfg.paths.glam_root)
                                     ).tolist()
-        target_paths = self.df["id2"].apply(lambda ids: 
-                                                search_image_path(ids, self.cfg.image_gallery, self.cfg.paths.glam_root)
+        target_paths = self.df["id2"].apply(
+                                        lambda ids: search_image_path(ids, self.cfg.image_gallery, self.cfg.paths.glam_root)
                                                 ).tolist()
         modifiers = self.df['query'].tolist()
         if self.cfg.use_metadata:
