@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from textwrap import wrap
+from wordcloud import WordCloud, STOPWORDS
 
 from pathlib import Path
 from transformers import set_seed
@@ -10,12 +11,15 @@ from transformers import set_seed
 from utils import get_config, setup_logging
 from loading_data import GLAMQueryDataset
 
+'''
+python figure.py --split test_id --seed 42
+'''
 def plot_samples(**kwargs):
     cfg = get_config(**kwargs)
     set_seed(cfg.seed)
 
-    path = Path(cfg.paths.log_path) / f"{cfg.split}_sample_plot.log"
-    setup_logging(path)
+    path = Path(cfg.paths.log_path) / f"{cfg.split}_sample_{cfg.seed}.log"
+    setup_logging(str(path))
     logger = logging.getLogger(__name__)
 
     logger.info("Loading the query dataset.")
@@ -35,8 +39,6 @@ def plot_samples(**kwargs):
         target_pil = sample['target_pil']
         target_paths = sample['target_paths']
         modifier = sample['modifier']
-        material = sample['material']
-        object_name = sample['object']
 
         logger.info(f"Reference image path of sample {idx}: {ref_path}")
         logger.info(f"Target image paths of sample {idx}: {target_paths}")
@@ -47,17 +49,17 @@ def plot_samples(**kwargs):
             if i == 0:
                 axes[j, i].imshow(ref_pil)
                 if j == 0:
-                    axes[j, i].set_title("Reference Image", fontsize=14, fontweight='bold')
+                    axes[j, i].set_title("Reference Image", fontsize=20, fontweight='bold')
             elif i == 1:
                 text = "\n".join(wrap(modifier, width=25))
                 axes[j, i].text(0.5, 0.5, text, 
                             fontsize=18, fontweight='bold', ha='center', va='center')
                 if j == 0:
-                    axes[j, i].set_title("Modifier", fontsize=14, fontweight='bold')
+                    axes[j, i].set_title("Modifier", fontsize=20, fontweight='bold')
             elif i == 2:
                 axes[j, i].imshow(target_pil[0])
                 if j == 0:
-                    axes[j, i].set_title("Target Image", fontsize=14, fontweight='bold')
+                    axes[j, i].set_title("Target Image", fontsize=20, fontweight='bold')
 
     plt.tight_layout()
 
@@ -65,8 +67,50 @@ def plot_samples(**kwargs):
     plt.savefig(save_path, bbox_inches='tight')
     logger.info(f"Sample plot saved to {save_path}")
 
-'''
-python figure.py --split test_id --seed 42
-'''
+
+def plot_wordcloud(
+    sentences,
+    file_name,
+    custom_stopwords=None,
+    width=1200,
+    height=600,
+    figsize=(5,4),
+):
+    """
+    Plot a word cloud from a list of English sentences.
+
+    Args:
+        sentences (list[str]): List of input sentences.
+        custom_stopwords (list[str] | set[str] | None):
+            Additional words to remove.
+        width (int): Word cloud width.
+        height (int): Word cloud height.
+        figsize (tuple): Matplotlib figure size.
+    """
+    # Combine sentences
+    text = " ".join(sentences)
+
+    # English stopwords + custom stopwords
+    stopwords = set(STOPWORDS)
+
+    if custom_stopwords:
+        stopwords.update(word.lower() for word in custom_stopwords)
+
+    # Generate word cloud
+    wordcloud = WordCloud(
+        width=width,
+        height=height,
+        background_color="white",
+        stopwords=stopwords,
+        collocations=False,
+    ).generate(text)
+
+    # Plot
+    plt.figure(figsize=figsize)
+    plt.imshow(wordcloud, interpolation="bilinear")
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(f"./figures/{file_name}.pdf", bbox_inches='tight')
+
 if __name__ == "__main__":
     fire.Fire(plot_samples)

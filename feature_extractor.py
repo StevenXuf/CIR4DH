@@ -12,6 +12,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from open_clip import create_model_and_transforms, create_model_from_pretrained, get_tokenizer
 
+from figure import plot_wordcloud
 from generation import load_text_gen_model, generate_text
 from utils import get_config, get_gpu_memory, setup_logging
 from loading_data import GLAMQueryDataset, GLAMGalleryDataset
@@ -136,15 +137,16 @@ class FeatureExtractor():
         if self.cfg.baseline.lower() == 'gen':
             text_gen_model, text_gen_processor, gen_config = load_text_gen_model(self.cfg, self.logger)
 
+        all_text = []
         query_embed=[]
-        ground_turth_names = []
+        ground_truth_names = []
         self.logger.info(f'Extracting features using {self.extractor_name.upper()} on {self.device} for queries...')
-        for i,batch in enumerate(tqdm(query_loader)):
+        for batch in tqdm(query_loader):
             pil_images = batch['pil_image']
             modifiers = batch['modifier']
             materials = batch['material']
             objects = batch['object']
-            ground_turth_names.extend(batch['target_names'])
+            ground_truth_names.extend(batch['target_names'])
             if self.cfg.baseline == 'text_only':
                 query_features = self.get_text_features(modifiers)
             elif self.cfg.baseline == 'image_only':
@@ -152,17 +154,30 @@ class FeatureExtractor():
             elif self.cfg.baseline == 'combined':
                 query_features = F.normalize(self.get_text_features(modifiers) + self.get_image_features(pil_images), p=2, dim=-1)
             elif self.cfg.baseline == 'gen':
-                captions = generate_text(self.cfg, self.logger, pil_images, modifiers, text_gen_model, text_gen_processor, gen_config, materials=materials, objects=objects)
-                query_features = self.get_text_features(captions)
+                modifiers = generate_text(self.cfg, self.logger, pil_images, modifiers, text_gen_model, text_gen_processor, gen_config, materials=materials, objects=objects)
+                query_features = self.get_text_features(modifiers)
             else:
                 raise Exception('Choose from "text_only", "image_only", "combined", or "gen".')
             query_embed.append(query_features)
+            all_text.extend(modifiers)
+
+
         query_embed = torch.cat(query_embed)
+
+        if self.cfg.baseline != 'gen':
+            stopwords = ['change', ',', '.']
+            file_name = f"wordloud_{self.cfg.split}_{self.cfg.baseline}_{self.cfg.seed}"
+        else:
+            stopwords = ['change', 'changed', 'unchanged', 'generate', 'generated', 'generating', 'feature', 'featuring', ',', '.', 'remain', 'now', 'background', 'foreground', 'object', 'material', 'texture', 'color', 'shape', 'size', 'position', 'orientation', 'angle', 'viewpoint', 'perspective', 'surface', 'pattern', 'style', 'design', 'appearance', 'look', 'feel', 'effect', 'result', 'outcome', 'impact', 'influence', 'consequence', 'ramification', 'implication', 'repercussion', 'made', 'create', 'created', 'creating', 'produce', 'produced', 'producing', 'form', 'formed', 'forming', 'develop', 'developed', 'developing', 'build', 'built', 'building', 'display', 'displayed', 'displaying', 'show', 'showed', 'showing', 'present', 'presented', 'presenting', 'illustrate', 'illustrated', 'illustrating', 'demonstrate', 'demonstrated', 'demonstrating', 'placed', 'place', 'placing', 'positioned', 'position', 'positioning', 'arranged', 'arrange', 'arranging', 'organized', 'organize', 'organizing', 'set', 'setting', 'setted', 'put', 'putting']
+            file_name = f"wordcloud_{self.cfg.split}_{self.cfg.gen_model}_{'with_metadata' if self.cfg.use_metadata else 'without_metadata'}_{ 'first_hierarchy' if self.cfg.use_first_hierarchy else 'all_hierarchy' }_{'en' if self.cfg.use_translation else 'ca'}_{self.cfg.baseline}_{self.cfg.seed}"
+        plot_wordcloud(all_text, 
+                       file_name,
+                       stopwords)
 
         target_embed=[]
         gallery_names = []
         self.logger.info(f'Extracting features using {self.extractor_name.upper()} on {self.device} for targets...')
-        for i,batch in enumerate(tqdm(target_loader)):
+        for batch in tqdm(target_loader):
             pil_images = batch['pil_image']
             gallery_names.extend(batch['target_names'])
             target_features = self.get_image_features(pil_images)
@@ -179,14 +194,14 @@ class FeatureExtractor():
         self.logger.info(f'Query embed size: {query_embed.size()}')
 
         target_index = torch.zeros(len(query_embed), len(target_embed), dtype=torch.long)
-        for idx in range(len(ground_turth_names)):
-            ground_name = ground_turth_names[idx]
+        for idx in range(len(ground_truth_names)):
+            ground_name = ground_truth_names[idx]
             target_index[idx] = torch.from_numpy(np.isin(gallery_names, ground_name).astype(np.int64))
 
         return {
                 'query_embed': query_embed, 
                 'target_embed': target_embed, 
-                'ground_turth_names': ground_turth_names,
+                'ground_truth_names': ground_truth_names,
                 'target_names': gallery_names,
                 'target_index': target_index,
                 'total_time': total_time, 

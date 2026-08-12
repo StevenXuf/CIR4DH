@@ -7,7 +7,8 @@ seed: 42
 top_ks: [1, 5, 10, 50]
 
 remove_duplicates: true # bool, remove duplicates in the dataset based on id1 and id2
-use_metadata: false # bool, use capitalized ones in terminal
+use_metadata: false # bool, use capitalized ones
+use_translation: false # bool, use translated ones
 use_first_hierarchy: false # bool, use first hierarchy for metadata
 gen_model: "qwen" # str, model to use for text generation, choices: [qwen, llava, deepseek]
 baseline: gen

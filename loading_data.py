@@ -55,7 +55,7 @@ def process_df(cfg, logger):
             lambda value: [item.strip() for item in value.split(",") if item.strip() not in set(non_existing_images)]
         )
     df.fillna("", inplace=True)
-    logger.info(f"Partition counts: {df['partition'].value_counts().to_dict()}")
+    logger.info(f"Valid partition counts: {df['partition'].value_counts().to_dict()}")
 
     if cfg.remove_duplicates:
         keys = pd.DataFrame({
@@ -131,7 +131,7 @@ class GLAMQueryDataset():
                 materials = [material.split('|')[0] for material in self.df['materials_1'].tolist()]
                 objects = [obj.split('|')[0] for obj in self.df['ObjectTypes_1'].tolist()]
             else:
-                self.logger.info("Using second hierarchy from metadata.")
+                self.logger.info("Using entire hierarchy from metadata.")
                 materials = self.df['materials_1'].tolist()
                 objects = self.df['ObjectTypes_1'].tolist()
         else:
@@ -169,9 +169,13 @@ class GLAMGalleryDataset(Dataset):
         self.logger.info("Loading gallery image paths...")
         df = pd.read_csv(self.cfg.paths.db_processed_name, sep=',', header=None)
         df = df[df[1]==self.cfg.split].reset_index(drop=True)
-        self.logger.info(df[1].value_counts().to_dict())
+        self.logger.info(f"Partition counts in provided {self.cfg.split}: {df[1].value_counts().to_dict()}")
 
-        unique_names = list(set(df[df[1] == self.cfg.split][0].to_list()))
+        valid_names = df[df[1] == self.cfg.split][0].to_list()
+        valid_paths = search_image_path(valid_names, self.cfg.image_gallery, self.cfg.paths.glam_root)
+        self.logger.info(f"Total valid paths in {self.cfg.split}: {len(valid_paths)}.")
+
+        unique_names = list(set(valid_names))
         self.logger.info(f"Unique names in {self.cfg.split}: {len(unique_names)}.")
 
         unique_paths = search_image_path(unique_names, self.cfg.image_gallery, self.cfg.paths.glam_root)
@@ -192,10 +196,11 @@ def main(**kwargs):
     cfg = get_config(**kwargs)
     set_seed(cfg.seed)
 
-    setup_logging(cfg.paths.log_path)
+    logging_path = Path(cfg.paths.log_path) / f"{cfg.split}_data_{cfg.seed}.log"
+    setup_logging(logging_path)
     logger = logging.getLogger(__name__)
 
-    query_loader = GLAMQueryDataset(cfg, logger).load_dataloader()
+    # query_loader = GLAMQueryDataset(cfg, logger).load_dataloader()
     gallery_dataset = GLAMGalleryDataset(cfg, logger)
     gallery_dataloader = DataLoader(gallery_dataset, 
                                     batch_size=cfg.batch_size, 

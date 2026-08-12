@@ -27,7 +27,7 @@ def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=Non
                 8. Output two to three simple, concise, coherent, and visually descriptive English sentences for the resulting scene. 
                 9. Append the object and material at the end of the description in json format using {"object": "material"}, e.g., {"chair": "wood"}.
 
-                For example, if the reference image shows: "a ceramic on a wooden table in a kitchen" and the instruction is "change ceramic to brick", then retuen only: "a brick on a wooden table. The table is in a kitchen full of furniture. {"table": "wooden", "brick": "concrete"}".
+                For example, if the reference image shows: "a ceramic on a wooden table in a kitchen" and the instruction is "change ceramic to brick", then return only: "a brick on a wooden table. The table is in a kitchen full of furniture. {"table": "wooden", "brick": "concrete"}".
             """
     if gen_model == 'qwen':
         sys_prompt = [
@@ -96,6 +96,81 @@ def get_sys_prompt(pil_image, modifier, gen_model='qwen', material=None, obj=Non
                                 Modification: {modifier}
                                 Now give the final caption in two to three short sentences.""",
                 "images": [],
+            },
+            {"role": "Assistant", "content": ""},
+        ]
+    else:
+        raise ValueError(f"Unsupported gen_model: {gen_model}")
+
+    return sys_prompt
+
+def get_translation_prompt(text, gen_model='qwen'):
+    template = """
+                You are an expert in language understanding and translation.
+
+                Given a Catalan text, you should translate it into English while preserving the original meaning.
+
+                The data structure is delineated by '$' (dollar symbol), while the hierarchical structure is delineated by '|' (pipe symbol, or vertical bar).
+
+                Follow the same data structure and hierarchical structure, while preserving the original meaning.
+
+                If the information is not available, you should only return '\n'.
+
+                Avoid adding any non-existent information.
+
+                Output only the translated text in English.
+            """
+    if gen_model == 'qwen':
+        sys_prompt = [
+            {
+                "role": "system", 
+                "content": f"{template}"
+            },
+            {
+                "role": "user",
+                "content": [
+                    {   
+                        "type": "text",
+                        "text": f"""
+                                Here is the Catalan text: {text}
+                                Now give only the translation in English.
+                            """
+                    }
+                ],
+            }
+        ]
+    elif gen_model == 'llava':
+        sys_prompt = [
+            {
+                "role": "system", 
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"{template}"
+                    }
+                ]
+            },
+            {
+                "role": "user",
+                "content": [
+                    {   
+                        "type": "text",
+                        "text": f"""
+                                Here is the Catalan text: {text}
+                                Now give only the translation in English.
+                                """
+                    },
+                ],
+            }
+        ]
+    elif gen_model == 'deepseek':
+        sys_prompt = [
+            {
+                "role": "User",
+                "content": f"""
+                            Here is the Catalan text: {text}
+                            Now give only the translation in English.
+                            """,
             },
             {"role": "Assistant", "content": ""},
         ]

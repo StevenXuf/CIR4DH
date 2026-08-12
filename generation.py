@@ -5,7 +5,7 @@ from transformers import Qwen2_5_VLForConditionalGeneration, LlavaNextProcessor,
 from qwen_vl_utils import process_vision_info
 from deepseek_vl.models import VLChatProcessor
 
-from prompts import get_sys_prompt
+from prompts import get_sys_prompt, get_translation_prompt
 from utils import get_config, setup_logging
 
 def load_text_gen_model(cfg, logger, **kwargs):
@@ -63,11 +63,48 @@ def load_text_gen_model(cfg, logger, **kwargs):
     return text_generation_model, processor, gen_config
 
 @torch.inference_mode()
+def translate(texts, model, processor, gen_config) -> list[str]:
+    prompts = [get_translation_prompt(text, 'qwen') for text in texts]
+
+    texts = [
+                processor.apply_chat_template(prompt, tokenize=False, add_generation_prompt=True) for prompt in prompts
+            ]
+    image_inputs, video_inputs = process_vision_info(prompts)
+    inputs = processor(
+        text=texts,
+        images=image_inputs,
+        videos=video_inputs,
+        padding=True,
+        return_tensors="pt",
+        padding_side='left'
+    )
+    inputs = inputs.to(model.device)
+
+    generated_ids = model.generate(**inputs, generation_config=gen_config)
+    generated_ids_trimmed = [
+        out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+    ]
+    output_texts = processor.batch_decode(
+        generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+    )
+    return output_texts
+
+
+@torch.inference_mode()
 def generate_text(cfg, logger, pil_images, modifiers, model, processor, gen_config, **kwargs) -> list[str]:
     gen_model = cfg.gen_model
     if cfg.use_metadata and ('materials' in kwargs and 'objects' in kwargs):
+        logger.info("Using metadata for text generation.")
+        if cfg.use_translation:
+            mat_size = len(kwargs['materials'])
+            translated = translate(kwargs['materials'] + kwargs['objects'], model, processor, gen_config)
+            kwargs['materials'] = translated[:mat_size]
+            kwargs['objects'] = translated[mat_size:]
+            logger.info(f"Translated materials: {kwargs['materials']}")
+            logger.info(f"Translated objects: {kwargs['objects']}")
         prompts = [get_sys_prompt(pil_image, modifier, gen_model, material, obj) for pil_image, modifier, material, obj in zip(pil_images, modifiers, kwargs['materials'], kwargs['objects'])]
     else:
+        logger.info("Not using metadata for text generation.")
         prompts = [get_sys_prompt(pil_image, modifier, gen_model) for pil_image, modifier in zip(pil_images, modifiers)]
     
     if gen_model == "qwen":
@@ -131,7 +168,6 @@ def generate_text(cfg, logger, pil_images, modifiers, model, processor, gen_conf
 
         output_texts = [tokenizer.decode(outputs[i].cpu().tolist(), skip_special_tokens=True) for i in range(len(outputs))]
     else:
-        logger.error(f"Unsupported MLLM: {gen_model.upper()}. Should be one of ['QWEN', 'LLAVA', 'DEEPSEEK']")
         raise ValueError(f"Unsupported MLLM: {gen_model.upper()}. Should be one of ['QWEN', 'LLAVA', 'DEEPSEEK']")
 
     logger.info(f"Generated texts: {output_texts}")

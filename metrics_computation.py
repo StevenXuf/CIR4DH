@@ -35,7 +35,7 @@ def main(**kwargs):
     set_seed(cfg.seed)
 
     cfg.paths.log_path = Path(cfg.paths.log_path) / f"{cfg.split}_{cfg.gen_model}_{cfg.extractor_name}_{'with_metadata' if cfg.use_metadata else 'without_metadata'}_{ 'first_hierarchy' if cfg.use_first_hierarchy else 'all_hierarchy' }_{cfg.baseline}_{cfg.seed}.log"
-    setup_logging(cfg.paths.log_path)
+    setup_logging(str(cfg.paths.log_path))
     logger = logging.getLogger(__name__)
     logger.info(f'Config: {cfg}')
 
@@ -57,7 +57,7 @@ def main(**kwargs):
     get_metrics(extraction_info['query_embed'], extraction_info['target_embed'], cfg, logger, target_index=extraction_info['target_index'])
 
 """
-python metrics_computation.py --gpu_id 1 --split test_ood --use_metadata True --use_first_hierarchy True --gen_model qwen --batch_size 64 --baseline none
+python metrics_computation.py --gpu_id 1 --split test_ood --use_metadata True --use_first_hierarchy True --use_translation True --gen_model qwen --batch_size 64 --baseline gen
 """
 
 if __name__ == '__main__':
