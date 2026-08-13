@@ -138,14 +138,32 @@ class FeatureExtractor():
             text_gen_model, text_gen_processor, gen_config = load_text_gen_model(self.cfg, self.logger)
 
         all_text = []
+        all_materials = []
+        all_objects = []
+
         query_embed=[]
         ground_truth_names = []
+        generated_descriptions  = []
+
+        all_modifiers = []
+        all_materials = []
+        all_objects = []
+        all_ref_names = []
+        all_ref_pil = []
+
         self.logger.info(f'Extracting features using {self.extractor_name.upper()} on {self.device} for queries...')
         for batch in tqdm(query_loader):
             pil_images = batch['pil_image']
             modifiers = batch['modifier']
             materials = batch['material']
             objects = batch['object']
+
+            all_modifiers.extend(modifiers)
+            all_materials.extend(materials)
+            all_objects.extend(objects)
+            all_ref_names.extend(batch['ref_name'])
+            all_ref_pil.extend(pil_images)
+
             ground_truth_names.extend(batch['target_names'])
             if self.cfg.baseline == 'text_only':
                 query_features = self.get_text_features(modifiers)
@@ -156,19 +174,28 @@ class FeatureExtractor():
             elif self.cfg.baseline == 'gen':
                 modifiers = generate_text(self.cfg, self.logger, pil_images, modifiers, text_gen_model, text_gen_processor, gen_config, materials=materials, objects=objects)
                 query_features = self.get_text_features(modifiers)
+                generated_descriptions.extend(modifiers)
             else:
                 raise Exception('Choose from "text_only", "image_only", "combined", or "gen".')
             query_embed.append(query_features)
             all_text.extend(modifiers)
+            all_materials.extend(materials)
+            all_objects.extend(objects)
 
 
         query_embed = torch.cat(query_embed)
 
+        plot_wordcloud(all_materials, 
+                    f"wordcloud_{self.cfg.split}_materials_{self.cfg.seed}",
+                    ['material', 'materials'])
+        plot_wordcloud(all_objects, 
+                    f"wordcloud_{self.cfg.split}_objects_{self.cfg.seed}")
+        
         if self.cfg.baseline != 'gen':
             stopwords = ['change', ',', '.']
-            file_name = f"wordloud_{self.cfg.split}_{self.cfg.baseline}_{self.cfg.seed}"
+            file_name = f"wordcloud_{self.cfg.split}_{self.cfg.baseline}_{self.cfg.seed}"
         else:
-            stopwords = ['change', 'changed', 'unchanged', 'generate', 'generated', 'generating', 'feature', 'featuring', ',', '.', 'remain', 'now', 'background', 'foreground', 'object', 'material', 'texture', 'color', 'shape', 'size', 'position', 'orientation', 'angle', 'viewpoint', 'perspective', 'surface', 'pattern', 'style', 'design', 'appearance', 'look', 'feel', 'effect', 'result', 'outcome', 'impact', 'influence', 'consequence', 'ramification', 'implication', 'repercussion', 'made', 'create', 'created', 'creating', 'produce', 'produced', 'producing', 'form', 'formed', 'forming', 'develop', 'developed', 'developing', 'build', 'built', 'building', 'display', 'displayed', 'displaying', 'show', 'showed', 'showing', 'present', 'presented', 'presenting', 'illustrate', 'illustrated', 'illustrating', 'demonstrate', 'demonstrated', 'demonstrating', 'placed', 'place', 'placing', 'positioned', 'position', 'positioning', 'arranged', 'arrange', 'arranging', 'organized', 'organize', 'organizing', 'set', 'setting', 'setted', 'put', 'putting']
+            stopwords = ['change', 'changed', 'unchanged', 'generate', 'generated', 'generating', 'feature', 'featuring', ',', '.', 'remain', 'now', 'background', 'foreground', 'object', 'material', 'texture', 'color', 'shape', 'size', 'position', 'orientation', 'angle', 'viewpoint', 'perspective', 'surface', 'pattern', 'style', 'design', 'appearance', 'look', 'feel', 'effect', 'result', 'outcome', 'impact', 'influence', 'consequence', 'ramification', 'implication', 'repercussion', 'made', 'create', 'created', 'creating', 'produce', 'produced', 'producing', 'form', 'formed', 'forming', 'develop', 'developed', 'developing', 'build', 'built', 'building', 'display', 'displayed', 'displaying', 'show', 'showed', 'showing', 'present', 'presented', 'presenting', 'illustrate', 'illustrated', 'illustrating', 'demonstrate', 'demonstrated', 'demonstrating', 'placed', 'place', 'placing', 'positioned', 'position', 'positioning', 'arranged', 'arrange', 'arranging', 'organized', 'organize', 'organizing', 'set', 'setting', 'put', 'putting']
             file_name = f"wordcloud_{self.cfg.split}_{self.cfg.gen_model}_{'with_metadata' if self.cfg.use_metadata else 'without_metadata'}_{ 'first_hierarchy' if self.cfg.use_first_hierarchy else 'all_hierarchy' }_{'en' if self.cfg.use_translation else 'ca'}_{self.cfg.baseline}_{self.cfg.seed}"
         plot_wordcloud(all_text, 
                        file_name,
@@ -199,13 +226,20 @@ class FeatureExtractor():
             target_index[idx] = torch.from_numpy(np.isin(gallery_names, ground_name).astype(np.int64))
 
         return {
-                'query_embed': query_embed, 
+                'query_embed': query_embed,
+                'generated_descriptions': generated_descriptions,
                 'target_embed': target_embed, 
                 'ground_truth_names': ground_truth_names,
                 'target_names': gallery_names,
                 'target_index': target_index,
                 'total_time': total_time, 
-                'sample_time': sample_time}
+                'sample_time': sample_time,
+                'all_modifiers': all_modifiers,
+                'all_materials': all_materials,
+                'all_objects': all_objects,
+                'all_ref_names': all_ref_names,
+                'all_ref_pil': all_ref_pil
+                }
 
 def main(**kwargs):
     cfg = get_config(**kwargs)

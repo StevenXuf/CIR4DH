@@ -91,6 +91,7 @@ class CustomDataset(Dataset):
         obj = self.objects[idx].strip() if self.objects is not None else None
         sample = {'pil_image': ref_img, 
                   'ref_path': ref_path,
+                  'ref_name': ref_path.stem,
                   'target_pil': target_img, 
                   'target_paths': tar_paths,
                   'modifier': cap, 
@@ -150,6 +151,7 @@ class GLAMQueryDataset():
                                 num_workers=self.cfg.num_workers,
                                 collate_fn=lambda batch: {
                                     'pil_image': [item['pil_image'] for item in batch],
+                                    'ref_name': [item['ref_name'] for item in batch],
                                     'target_pil': [item['target_pil'] for item in batch],
                                     'target_names': [item['target_names'] for item in batch],
                                     'modifier': [item['modifier'] for item in batch],
