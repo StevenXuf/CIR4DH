@@ -93,16 +93,16 @@ def main(**kwargs):
 
         axes[j*2, 0].imshow(query_image)
         axes[j*2, 0].set_title("Query Image", fontdict=title_font_dict)
-        axes[j*2, 0].set_ylabel("Query", fontdict=title_font_dict)
+        axes[j*2, 0].set_ylabel(f"Query {j+1}", fontdict=title_font_dict)
 
         axes[j*2, 1].text(0.5, 0.5, modifier, fontdict=text_font_dict)
         axes[j*2, 1].set_title("Modifier", fontdict=title_font_dict)
 
         axes[j*2, 2].text(0.5, 0.5, material, fontdict=text_font_dict)
-        axes[j*2, 2].set_title("Material", fontdict=title_font_dict)
+        axes[j*2, 2].set_title("Materials", fontdict=title_font_dict)
 
         axes[j*2, 3].text(0.5, 0.5, obj, fontdict=text_font_dict)
-        axes[j*2, 3].set_title("Object", fontdict=title_font_dict)
+        axes[j*2, 3].set_title("Object Types", fontdict=title_font_dict)
 
         axes[j*2, 4].text(0.5, 0.5, generated_description, fontdict=text_font_dict)
         axes[j*2, 4].set_title("Generated Description", fontdict=title_font_dict)
