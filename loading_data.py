@@ -129,8 +129,8 @@ class GLAMQueryDataset():
         if self.cfg.use_metadata:
             if self.cfg.use_first_hierarchy:
                 self.logger.info("Using first hierarchy from metadata.")
-                materials = [material.split('|')[0] for material in self.df['materials_1'].tolist()]
-                objects = [obj.split('|')[0] for obj in self.df['ObjectTypes_1'].tolist()]
+                materials = [material.split('$')[0] for material in self.df['materials_1'].tolist()]
+                objects = [obj.split('$')[0] for obj in self.df['ObjectTypes_1'].tolist()]
             else:
                 self.logger.info("Using entire hierarchy from metadata.")
                 materials = self.df['materials_1'].tolist()

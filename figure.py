@@ -1,15 +1,19 @@
 import fire
 import logging
+import nltk
 import numpy as np
 import matplotlib.pyplot as plt
 from textwrap import wrap
 from wordcloud import WordCloud, STOPWORDS
+from nltk.corpus import stopwords as nltk_stopwords
 
 from pathlib import Path
 from transformers import set_seed
 
 from utils import get_config, setup_logging
 from loading_data import GLAMQueryDataset
+
+nltk.download("stopwords")
 
 '''
 python figure.py --split test_id --seed 42
@@ -52,8 +56,21 @@ def plot_samples(**kwargs):
                     axes[j, i].set_title("Reference Image", fontsize=20, fontweight='bold')
             elif i == 1:
                 text = "\n".join(wrap(modifier, width=25))
-                axes[j, i].text(0.5, 0.5, text, 
+                axes[j, i].text(0.5, 0.52, text, 
                             fontsize=18, fontweight='bold', ha='center', va='center')
+                axes[j, i].annotate("",
+                                    xy=(0.95, 0.42),
+                                    xytext=(0.05, 0.42),
+                                    xycoords="axes fraction",
+                                    arrowprops=dict(
+                                        arrowstyle="-|>",
+                                        color="#b5adaf",
+                                        lw=4,
+                                        mutation_scale=22,
+                                        shrinkA=0,
+                                        shrinkB=0,
+                                    )
+                )
                 if j == 0:
                     axes[j, i].set_title("Modifier", fontsize=20, fontweight='bold')
             elif i == 2:
@@ -91,7 +108,7 @@ def plot_wordcloud(
     text = " ".join(sentences)
 
     # English stopwords + custom stopwords
-    stopwords = set(STOPWORDS)
+    stopwords = set(STOPWORDS).union(set(nltk_stopwords.words('catalan')))
 
     if custom_stopwords:
         stopwords.update(word.lower() for word in custom_stopwords)
