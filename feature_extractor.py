@@ -182,22 +182,25 @@ class FeatureExtractor():
 
         plot_wordcloud(all_materials, 
                     f"wordcloud_{self.cfg.split}_materials_{self.cfg.seed}",
-                    ['material', 'materials'])
+                    language='ca',
+                    custom_stopwords=['material', 'materials'],)
         plot_wordcloud(all_objects, 
-                    f"wordcloud_{self.cfg.split}_objects_{self.cfg.seed}")
+                    f"wordcloud_{self.cfg.split}_objects_{self.cfg.seed}",
+                    language='ca',
+                    )
         
         if self.cfg.baseline != 'gen':
             stopwords = ['change', ',', '.']
             file_name = f"wordcloud_{self.cfg.split}_{self.cfg.baseline}_{self.cfg.seed}"
             plot_wordcloud(all_modifiers, 
                             file_name,
-                            stopwords)
+                            custom_stopwords=stopwords)
         else:
             stopwords = ['change', 'changed', 'unchanged', 'generate', 'generated', 'generating', 'feature', 'featuring', ',', '.', 'remain', 'now', 'background', 'foreground', 'object', 'material', 'texture', 'color', 'shape', 'size', 'position', 'orientation', 'angle', 'viewpoint', 'perspective', 'surface', 'pattern', 'style', 'design', 'appearance', 'look', 'feel', 'effect', 'result', 'outcome', 'impact', 'influence', 'consequence', 'ramification', 'implication', 'repercussion', 'made', 'create', 'created', 'creating', 'produce', 'produced', 'producing', 'form', 'formed', 'forming', 'develop', 'developed', 'developing', 'build', 'built', 'building', 'display', 'displayed', 'displaying', 'show', 'showed', 'showing', 'present', 'presented', 'presenting', 'illustrate', 'illustrated', 'illustrating', 'demonstrate', 'demonstrated', 'demonstrating', 'placed', 'place', 'placing', 'positioned', 'position', 'positioning', 'arranged', 'arrange', 'arranging', 'organized', 'organize', 'organizing', 'set', 'setting', 'put', 'putting']
             file_name = f"wordcloud_{self.cfg.split}_{self.cfg.gen_model}_{'with_metadata' if self.cfg.use_metadata else 'without_metadata'}_{ 'first_hierarchy' if self.cfg.use_first_hierarchy else 'all_hierarchy' }_{'en' if self.cfg.use_translation else 'ca'}_{self.cfg.baseline}_{self.cfg.seed}"
             plot_wordcloud(generated_descriptions, 
                             file_name,
-                            stopwords)
+                            custom_stopwords=stopwords)
 
         target_embed=[]
         gallery_names = []

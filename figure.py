@@ -89,6 +89,7 @@ def plot_wordcloud(
     sentences,
     file_name,
     custom_stopwords=None,
+    language='en',
     width=1200,
     height=600,
     figsize=(5,4),
@@ -108,7 +109,10 @@ def plot_wordcloud(
     text = " ".join(sentences)
 
     # English stopwords + custom stopwords
-    stopwords = set(STOPWORDS).union(set(nltk_stopwords.words('catalan')))
+    if language == 'en':
+        stopwords = set(STOPWORDS)
+    else:
+        stopwords = set(nltk_stopwords.words('catalan'))
 
     if custom_stopwords:
         stopwords.update(word.lower() for word in custom_stopwords)
